@@ -1,126 +1,130 @@
-import { IStorage } from "./storage";
-import createMemoryStore from "memorystore";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { eq } from "drizzle-orm";
 import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 import {
-  User,
-  InsertUser,
-  Course,
-  InsertCourse,
-  Enrollment,
-  InsertEnrollment,
-  Payment,
-  InsertPayment,
-  UpdateGrade,
+  users,
+  courses,
+  enrollments,
+  payments,
+  type User,
+  type InsertUser,
+  type Course,
+  type InsertCourse,
+  type Enrollment,
+  type InsertEnrollment,
+  type Payment,
+  type InsertPayment,
+  type UpdateGrade,
 } from "@shared/schema";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
+const db = drizzle({ client: pool });
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private courses: Map<number, Course>;
-  private enrollments: Map<number, Enrollment>;
-  private payments: Map<number, Payment>;
-  private currentId: number;
-  sessionStore: session.SessionStore;
+export interface IStorage {
+  sessionStore: session.Store;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  getAllCourses(): Promise<Course[]>;
+  getCoursesByInstructor(instructorId: number): Promise<Course[]>;
+  createCourse(course: InsertCourse): Promise<Course>;
+  getEnrollmentsByUser(userId: number): Promise<Enrollment[]>;
+  getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]>;
+  createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
+  updateEnrollment(enrollmentId: number, update: UpdateGrade): Promise<Enrollment | undefined>;
+  getPaymentsByUser(userId: number): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+}
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.courses = new Map();
-    this.enrollments = new Map();
-    this.payments = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const newUser = { ...user, id };
-    this.users.set(id, newUser);
+    const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
   }
 
   async getAllCourses(): Promise<Course[]> {
-    return Array.from(this.courses.values());
+    return await db.select().from(courses);
   }
 
   async getCoursesByInstructor(instructorId: number): Promise<Course[]> {
-    return Array.from(this.courses.values()).filter(
-      (course) => course.instructorId === instructorId
-    );
+    return await db.select().from(courses).where(eq(courses.instructorId, instructorId));
   }
 
   async createCourse(course: InsertCourse): Promise<Course> {
-    const id = this.currentId++;
-    const newCourse = { ...course, id };
-    this.courses.set(id, newCourse);
+    const [newCourse] = await db.insert(courses).values(course).returning();
     return newCourse;
   }
 
   async getEnrollmentsByUser(userId: number): Promise<Enrollment[]> {
-    return Array.from(this.enrollments.values()).filter(
-      (enrollment) => enrollment.studentId === userId,
-    );
+    return await db.select().from(enrollments).where(eq(enrollments.studentId, userId));
   }
 
   async getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]> {
-    return Array.from(this.enrollments.values()).filter(
-      (enrollment) => enrollment.courseId === courseId,
-    );
+    return await db.select().from(enrollments).where(eq(enrollments.courseId, courseId));
   }
 
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
-    const id = this.currentId++;
-    const newEnrollment = { 
-      ...enrollment, 
-      id,
-      grade: "IP",
-      attendance: 0,
-      lastUpdated: new Date()
-    };
-    this.enrollments.set(id, newEnrollment);
+    const [newEnrollment] = await db.insert(enrollments)
+      .values({
+        ...enrollment,
+        grade: "IP",
+        attendance: "0",
+        lastUpdated: new Date(),
+      })
+      .returning();
     return newEnrollment;
   }
 
   async updateEnrollment(
-    enrollmentId: number, 
+    enrollmentId: number,
     update: UpdateGrade
   ): Promise<Enrollment | undefined> {
-    const enrollment = this.enrollments.get(enrollmentId);
-    if (!enrollment) return undefined;
-
-    const updatedEnrollment = {
-      ...enrollment,
-      ...update,
-      lastUpdated: new Date()
-    };
-    this.enrollments.set(enrollmentId, updatedEnrollment);
+    const [updatedEnrollment] = await db
+      .update(enrollments)
+      .set({
+        grade: update.grade,
+        attendance: update.attendance.toString(),
+        lastUpdated: new Date(),
+      })
+      .where(eq(enrollments.id, enrollmentId))
+      .returning();
     return updatedEnrollment;
   }
 
   async getPaymentsByUser(userId: number): Promise<Payment[]> {
-    return Array.from(this.payments.values()).filter(
-      (payment) => payment.studentId === userId,
-    );
+    return await db.select().from(payments).where(eq(payments.studentId, userId));
   }
 
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    const id = this.currentId++;
-    const newPayment = { ...payment, id };
-    this.payments.set(id, newPayment);
+    const [newPayment] = await db.insert(payments)
+      .values({
+        ...payment,
+        createdAt: new Date(),
+      })
+      .returning();
     return newPayment;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
