@@ -10,17 +10,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect } from "react";
 
 const loginSchema = insertUserSchema.pick({ username: true, password: true });
 
 export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
-
-  if (user) {
-    setLocation("/");
-    return null;
-  }
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -32,11 +28,21 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
-      role: "student",
+      role: "student" as const,
       fullName: "",
       email: "",
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
+
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -149,7 +155,10 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Role</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select role" />
