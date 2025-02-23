@@ -30,8 +30,11 @@ export const enrollments = pgTable("enrollments", {
   courseId: integer("course_id")
     .references(() => courses.id)
     .notNull(),
-  grade: text("grade"),
-  attendance: integer("attendance").default(0),
+  grade: text("grade", { 
+    enum: ["A", "B", "C", "D", "F", "IP"] // IP = In Progress
+  }).default("IP"),
+  attendance: numeric("attendance").default("0"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
 });
 
 export const payments = pgTable("payments", {
@@ -45,11 +48,19 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Create schemas
 export const insertUserSchema = createInsertSchema(users);
 export const insertCourseSchema = createInsertSchema(courses);
 export const insertEnrollmentSchema = createInsertSchema(enrollments);
 export const insertPaymentSchema = createInsertSchema(payments);
 
+// Update grade schema
+export const updateGradeSchema = z.object({
+  grade: z.enum(["A", "B", "C", "D", "F", "IP"]),
+  attendance: z.number().min(0).max(100),
+});
+
+// Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Course = typeof courses.$inferSelect;
@@ -58,3 +69,4 @@ export type Enrollment = typeof enrollments.$inferSelect;
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type UpdateGrade = z.infer<typeof updateGradeSchema>;

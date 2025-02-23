@@ -10,6 +10,7 @@ import {
   InsertEnrollment,
   Payment,
   InsertPayment,
+  UpdateGrade,
 } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
@@ -54,6 +55,12 @@ export class MemStorage implements IStorage {
     return Array.from(this.courses.values());
   }
 
+  async getCoursesByInstructor(instructorId: number): Promise<Course[]> {
+    return Array.from(this.courses.values()).filter(
+      (course) => course.instructorId === instructorId
+    );
+  }
+
   async createCourse(course: InsertCourse): Promise<Course> {
     const id = this.currentId++;
     const newCourse = { ...course, id };
@@ -67,11 +74,39 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]> {
+    return Array.from(this.enrollments.values()).filter(
+      (enrollment) => enrollment.courseId === courseId,
+    );
+  }
+
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
     const id = this.currentId++;
-    const newEnrollment = { ...enrollment, id };
+    const newEnrollment = { 
+      ...enrollment, 
+      id,
+      grade: "IP",
+      attendance: 0,
+      lastUpdated: new Date()
+    };
     this.enrollments.set(id, newEnrollment);
     return newEnrollment;
+  }
+
+  async updateEnrollment(
+    enrollmentId: number, 
+    update: UpdateGrade
+  ): Promise<Enrollment | undefined> {
+    const enrollment = this.enrollments.get(enrollmentId);
+    if (!enrollment) return undefined;
+
+    const updatedEnrollment = {
+      ...enrollment,
+      ...update,
+      lastUpdated: new Date()
+    };
+    this.enrollments.set(enrollmentId, updatedEnrollment);
+    return updatedEnrollment;
   }
 
   async getPaymentsByUser(userId: number): Promise<Payment[]> {

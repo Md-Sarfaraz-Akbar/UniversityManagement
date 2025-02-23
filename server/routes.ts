@@ -3,7 +3,12 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertCourseSchema, insertEnrollmentSchema, insertPaymentSchema } from "@shared/schema";
+import { 
+  insertCourseSchema, 
+  insertEnrollmentSchema, 
+  insertPaymentSchema,
+  updateGradeSchema 
+} from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -19,6 +24,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Course routes
   app.get("/api/courses", requireAuth, async (req, res) => {
     const courses = await storage.getAllCourses();
+    res.json(courses);
+  });
+
+  app.get("/api/courses/instructor", requireAuth, async (req, res) => {
+    if (req.user?.role !== "faculty") {
+      return res.status(403).send("Forbidden");
+    }
+    const courses = await storage.getCoursesByInstructor(req.user.id);
     res.json(courses);
   });
 
@@ -39,6 +52,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(enrollments);
   });
 
+  app.get("/api/courses/:courseId/enrollments", requireAuth, async (req, res) => {
+    if (req.user?.role !== "faculty") {
+      return res.status(403).send("Forbidden");
+    }
+    const enrollments = await storage.getEnrollmentsByCourse(parseInt(req.params.courseId));
+    res.json(enrollments);
+  });
+
   app.post("/api/enrollments", requireAuth, async (req, res) => {
     if (req.user?.role !== "student") {
       return res.status(403).send("Forbidden");
@@ -48,6 +69,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       studentId: req.user.id,
     });
     res.status(201).json(enrollment);
+  });
+
+  // Grade management routes
+  app.patch("/api/enrollments/:enrollmentId", requireAuth, async (req, res) => {
+    if (req.user?.role !== "faculty") {
+      return res.status(403).send("Forbidden");
+    }
+
+    try {
+      const update = updateGradeSchema.parse(req.body);
+      const enrollment = await storage.updateEnrollment(
+        parseInt(req.params.enrollmentId),
+        update
+      );
+
+      if (!enrollment) {
+        return res.status(404).send("Enrollment not found");
+      }
+
+      res.json(enrollment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json(error.errors);
+      }
+      throw error;
+    }
   });
 
   // Payment routes
