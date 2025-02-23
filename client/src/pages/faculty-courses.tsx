@@ -110,6 +110,17 @@ export default function FacultyCourses() {
     },
   });
 
+  // Helper function to format dates safely
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return format(date, "MMM d, yyyy");
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
   // Get enrollments for a specific course
   const useEnrollments = (courseId: number) => {
     return useQuery<Enrollment[]>({
@@ -256,18 +267,18 @@ export default function FacultyCourses() {
                           Student ID: {enrollment.studentId}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Last Updated: {format(new Date(enrollment.lastUpdated), "MMM d, yyyy")}
+                          Last Updated: {formatDate(enrollment.lastUpdated)}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <Select
-                          defaultValue={enrollment.grade}
+                          defaultValue={enrollment.grade || "IP"}
                           onValueChange={(grade) =>
                             updateGradeMutation.mutate({
                               enrollmentId: enrollment.id,
                               data: {
                                 grade,
-                                attendance: enrollment.attendance
+                                attendance: Number(enrollment.attendance) || 0
                               }
                             })
                           }
@@ -288,13 +299,13 @@ export default function FacultyCourses() {
                           type="number"
                           placeholder="Attendance %"
                           className="w-[120px]"
-                          value={enrollment.attendance}
+                          defaultValue={Number(enrollment.attendance) || 0}
                           onChange={(e) =>
                             updateGradeMutation.mutate({
                               enrollmentId: enrollment.id,
                               data: {
-                                grade: enrollment.grade,
-                                attendance: parseFloat(e.target.value)
+                                grade: enrollment.grade || "IP",
+                                attendance: parseFloat(e.target.value) || 0
                               }
                             })
                           }
