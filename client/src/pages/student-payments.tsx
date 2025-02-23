@@ -85,6 +85,16 @@ export default function StudentPayments() {
     }
   };
 
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return format(date, "PPP");
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -169,7 +179,7 @@ export default function StudentPayments() {
                   Status: {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Date: {format(new Date(payment.createdAt), "PPP")}
+                  Date: {formatDate(payment.createdAt)}
                 </p>
               </div>
             </CardContent>
