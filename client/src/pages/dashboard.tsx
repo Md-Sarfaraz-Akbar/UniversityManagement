@@ -12,7 +12,7 @@ import {
 } from "recharts";
 
 export default function Dashboard() {
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
 
   const mockAttendanceData = [
     { course: "CS101", attendance: 85 },
@@ -21,65 +21,69 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">University Management System</h1>
-          <div className="flex items-center gap-4">
-            <span>Welcome, {user?.fullName}</span>
-            <Button variant="outline" onClick={() => logoutMutation.mutate()}>
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p><strong>Name:</strong> {user?.fullName}</p>
+              <p><strong>Role:</strong> {user?.role}</p>
+              <p><strong>Email:</strong> {user?.email}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p><strong>Name:</strong> {user?.fullName}</p>
-                <p><strong>Role:</strong> {user?.role}</p>
-                <p><strong>Email:</strong> {user?.email}</p>
-              </div>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mockAttendanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="course" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="attendance" fill="hsl(var(--primary))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Attendance Overview</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockAttendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="course" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="attendance" fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Button className="w-full">View Courses</Button>
-                <Button className="w-full" variant="outline">View Grades</Button>
-                <Button className="w-full" variant="outline">Make Payment</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {user?.role === "student" && (
+                <>
+                  <Button className="w-full">View Courses</Button>
+                  <Button className="w-full" variant="outline">View Grades</Button>
+                  <Button className="w-full" variant="outline">Make Payment</Button>
+                </>
+              )}
+              {user?.role === "faculty" && (
+                <>
+                  <Button className="w-full">Manage Courses</Button>
+                  <Button className="w-full" variant="outline">Grade Students</Button>
+                  <Button className="w-full" variant="outline">Track Attendance</Button>
+                </>
+              )}
+              {user?.role === "admin" && (
+                <>
+                  <Button className="w-full">Manage Users</Button>
+                  <Button className="w-full" variant="outline">System Settings</Button>
+                  <Button className="w-full" variant="outline">View Reports</Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
