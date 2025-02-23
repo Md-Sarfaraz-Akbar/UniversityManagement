@@ -7,6 +7,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import Layout from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import FacultyCourses from "@/pages/faculty-courses";
+import StudentCourses from "@/pages/student-courses";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
@@ -27,6 +28,14 @@ function Router() {
         component={() => (
           <Layout>
             <FacultyCourses />
+          </Layout>
+        )}
+      />
+      <ProtectedRoute
+        path="/student/courses"
+        component={() => (
+          <Layout>
+            <StudentCourses />
           </Layout>
         )}
       />
